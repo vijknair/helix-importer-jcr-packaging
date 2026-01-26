@@ -113,11 +113,11 @@ const addPropertiesXml = async (dir, prefix, zip, packageName) => {
   await saveFile(dir, `${prefix}/${propXmlPath}`, propXml);
 };
 
-const getEmptyAncestorPages = (pages) => {
+const getEmptyAncestorPages = (pages, emptyPageTemplate) => {
   const seenAncestors = new Set();
   const jcrPaths = pages.map((page) => page.jcrPath);
   const emptyAncestors = [];
-  const ancestorXml = getEmptyPageTemplate();
+  const ancestorXml = emptyPageTemplate;
 
   jcrPaths.forEach((pagePath) => {
     const pathSegments = pagePath.split('/');
@@ -171,6 +171,8 @@ const saveAssetMappings = async (jcrAssetMap, absoluteAssetUrlMap, outputDirecto
  * @param {Array<string>} assetUrls - An array of asset urls that were found in the markdown.
  * @param {string} siteContentPath - The path to the site content in AEM under /content.
  * @param {string} assetDamPath - The path to the assets in AEM under /content/dam.
+ * @param {string} [emptyPageTemplate] - Optional custom XML template for empty ancestor pages.
+ *   Defaults to Franklin template. Use this to customize for non-Franklin AEM implementations.
  * @returns {Promise<void>} - The promise is resolved when the package is created.
  */
 export const createJcrPackage = async (
@@ -179,6 +181,7 @@ export const createJcrPackage = async (
   assetUrls,
   siteContentPath,
   assetDamPath,
+  emptyPageTemplate = getEmptyPageTemplate(),
 ) => {
   if (pages.length === 0) {
     return;
@@ -228,7 +231,7 @@ export const createJcrPackage = async (
   }
 
   // add the empty ancestor pages
-  const emptyAncestorPages = getEmptyAncestorPages(jcrPages);
+  const emptyAncestorPages = getEmptyAncestorPages(jcrPages, emptyPageTemplate);
   for (let i = 0; i < emptyAncestorPages.length; i += 1) {
     const page = emptyAncestorPages[i];
     // eslint-disable-next-line no-await-in-loop

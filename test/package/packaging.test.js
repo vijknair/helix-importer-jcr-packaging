@@ -233,4 +233,65 @@ describe('packaging', () => {
     expect(page.data).to.equal(await loadFile(ORIGINAL_XML_PATH));
     expect(page.url).to.equal(PAGE_URL);
   });
+
+  it('should create a jcr package with custom empty page template', async () => {
+    const customTemplate = `<?xml version="1.0" encoding="UTF-8"?>
+<jcr:root xmlns:jcr="http://www.jcp.org/jcr/1.0" xmlns:nt="http://www.jcp.org/jcr/nt/1.0" xmlns:cq="http://www.day.com/jcr/cq/1.0" jcr:primaryType="cq:Page">
+  <jcr:content cq:template="/apps/custom/templates/page" jcr:primaryType="cq:PageContent" sling:resourceType="custom/components/page"/>
+</jcr:root>`;
+
+    const pages = [
+      createPage(
+        '/about/team',
+        '<?xml version="1.0" encoding="UTF-8"?>\n<jcr:root xmlns:jcr="http://www.jcp.org/jcr/1.0" xmlns:nt="http://www.jcp.org/jcr/nt/1.0" xmlns:cq="http://www.day.com/jcr/cq/1.0" xmlns:sling="http://sling.apache.org/jcr/sling/1.0" jcr:primaryType="cq:Page">\n  <jcr:content cq:template="/apps/custom/templates/page" sling:resourceType="custom/components/page" jcr:primaryType="cq:PageContent" jcr:title="Team">\n    <root jcr:primaryType="nt:unstructured" sling:resourceType="custom/components/root"></root>\n  </jcr:content>\n</jcr:root>',
+        'https://www.domain.com/about/team',
+      ),
+    ];
+
+    const imageUrls = [];
+    const siteFolderName = '/content/mysite';
+    const assetFolderName = '/content/dam/mysite';
+
+    await createJcrPackage(outdir, pages, imageUrls, siteFolderName, assetFolderName, customTemplate);
+
+    // Verify that ancestor pages use the custom template
+    const emptyPages = [
+      `../../${outdir}/jcr/jcr_root/content/mysite/about/.content.xml`,
+      `../../${outdir}/jcr/jcr_root/content/mysite/.content.xml`,
+      `../../${outdir}/jcr/jcr_root/content/.content.xml`,
+    ];
+
+    const results = emptyPages.map(async (page) => {
+      const xml = await loadFile(page);
+      expect(xml).to.be.equal(customTemplate);
+      // Verify it's NOT the Franklin template
+      expect(xml).to.not.equal(getEmptyPageTemplate());
+      // Verify custom template attributes are present
+      expect(xml).to.include('cq:template="/apps/custom/templates/page"');
+      expect(xml).to.include('sling:resourceType="custom/components/page"');
+    });
+    await Promise.all(results);
+  });
+
+  it('should use default Franklin template when no custom template provided', async () => {
+    const pages = [
+      createPage(
+        '/products/item',
+        '<?xml version="1.0" encoding="UTF-8"?>\n<jcr:root xmlns:jcr="http://www.jcp.org/jcr/1.0" xmlns:nt="http://www.jcp.org/jcr/nt/1.0" xmlns:cq="http://www.day.com/jcr/cq/1.0" xmlns:sling="http://sling.apache.org/jcr/sling/1.0" jcr:primaryType="cq:Page">\n  <jcr:content cq:template="/libs/core/franklin/templates/page" sling:resourceType="core/franklin/components/page/v1/page" jcr:primaryType="cq:PageContent" jcr:title="Item"></jcr:content>\n</jcr:root>',
+        'https://www.domain.com/products/item',
+      ),
+    ];
+
+    const imageUrls = [];
+    const siteFolderName = '/content/franklin-site';
+    const assetFolderName = '/content/dam/franklin-site';
+
+    // Call without custom template parameter
+    await createJcrPackage(outdir, pages, imageUrls, siteFolderName, assetFolderName);
+
+    // Verify that ancestor pages use the default Franklin template
+    const emptyPage = await loadFile(`../../${outdir}/jcr/jcr_root/content/franklin-site/products/.content.xml`);
+    expect(emptyPage).to.be.equal(getEmptyPageTemplate());
+    expect(emptyPage).to.include('cq:template="/libs/core/franklin/templates/page"');
+  });
 });

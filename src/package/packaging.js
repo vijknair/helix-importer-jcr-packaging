@@ -244,7 +244,7 @@ export const createJcrPackage = async (
   // add the properties.xml file
   await addPropertiesXml(outputDirectory, prefix, zip, packageName);
 
-  const outputType = typeof window !== 'undefined' ? 'blob' : 'nodebuffer';
+  const outputType = typeof window !== 'undefined' && typeof process === 'undefined' ? 'blob' : 'nodebuffer';
 
   // save the zip file
   await zip.generateAsync({ type: outputType })
